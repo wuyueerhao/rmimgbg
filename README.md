@@ -39,26 +39,33 @@ npm run dev
 
 ## 部署到 Cloudflare Pages
 
-### 1. 推送到 GitHub
-
-```bash
-git add .
-git commit -m "Update: Use client-side AI model"
-git push
-```
-
-### 2. 在 Cloudflare Pages 部署
+### 方法 1：通过 Cloudflare Dashboard（推荐）
 
 1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
-2. 进入 Pages → Create a project
-3. 连接 GitHub 并选择你的仓库
+2. 进入 **Workers & Pages** → **Create application** → **Pages**
+3. 连接 GitHub 并选择仓库 `wuyueerhao/rmimgbg`
 4. 构建设置：
-   - 框架预设：`Next.js`
-   - 构建命令：`npm run build`
-   - 构建输出目录：`.next`
-5. 点击 "Save and Deploy"
+   - **框架预设**：Next.js (Static HTML Export)
+   - **构建命令**：`npm run build`
+   - **构建输出目录**：`out`
+5. **环境变量**：
+   - 添加 `REMOVEBG_API_KEY` = 你的 API Key
+6. 点击 "Save and Deploy"
 
-无需配置任何环境变量！
+### 方法 2：使用 Vercel（更简单）
+
+如果 Cloudflare Pages 有问题，可以使用 Vercel：
+
+1. 访问 [vercel.com](https://vercel.com)
+2. 导入 GitHub 仓库
+3. 添加环境变量 `REMOVEBG_API_KEY`
+4. 部署
+
+### 注意事项
+
+- 确保在部署平台添加了 `REMOVEBG_API_KEY` 环境变量
+- API Key 从 [remove.bg](https://www.remove.bg/api) 获取
+- 免费账号每月有 50 次处理限制
 
 ## 技术栈
 
@@ -66,20 +73,15 @@ git push
 - React 18
 - TypeScript
 - Tailwind CSS
-- @imgly/background-removal (ONNX Runtime + WebAssembly)
-
-## 工作原理
-
-使用 [@imgly/background-removal](https://github.com/imgly/background-removal-js) 库，它：
-- 在浏览器中运行预训练的 AI 模型
-- 使用 ONNX Runtime Web 和 WebAssembly
-- 首次加载会下载约 40MB 的模型文件（会被缓存）
-- 完全客户端处理，保护用户隐私
+- remove.bg API
 
 ## 项目结构
 
 ```
 ├── app/
+│   ├── api/
+│   │   └── remove-bg/
+│   │       └── route.ts      # API 路由（保护 API Key）
 │   ├── page.tsx               # 主页面
 │   └── layout.tsx             # 布局
 ├── components/
