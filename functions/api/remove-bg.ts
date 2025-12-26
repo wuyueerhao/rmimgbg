@@ -12,6 +12,7 @@ export async function onRequest(context: any) {
   try {
     const formData = await request.formData()
     const image = formData.get('image')
+    const userApiKey = formData.get('apiKey') // 用户提供的 API Key
 
     if (!image) {
       return new Response(JSON.stringify({ error: '请上传图片' }), {
@@ -20,11 +21,12 @@ export async function onRequest(context: any) {
       })
     }
 
-    const apiKey = env.REMOVEBG_API_KEY
+    // 优先使用用户提供的 API Key，否则使用服务器配置的
+    const apiKey = userApiKey || env.REMOVEBG_API_KEY
 
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: '服务器配置错误：缺少 API Key' }),
+        JSON.stringify({ error: '请在设置中配置 API Key 或联系管理员' }),
         {
           status: 500,
           headers: { 'Content-Type': 'application/json' },
@@ -48,6 +50,18 @@ export async function onRequest(context: any) {
     if (!response.ok) {
       const error = await response.text()
       console.error('remove.bg API error:', error)
+      
+      // 如果是 API Key 相关错误，返回更友好的提示
+      if (response.status === 403) {
+        return new Response(
+          JSON.stringify({ error: 'API Key 无效或已超出配额限制' }),
+          {
+            status: response.status,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      }
+      
       return new Response(
         JSON.stringify({ error: '处理图片失败，请稍后重试' }),
         {
