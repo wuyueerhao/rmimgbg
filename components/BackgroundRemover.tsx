@@ -25,9 +25,18 @@ export default function BackgroundRemover() {
   // 动态加载 @imgly/background-removal
   useEffect(() => {
     if (mode === 'local' && !removeBackgroundFn) {
-      import('@imgly/background-removal').then((module) => {
-        setRemoveBackgroundFn(() => module.removeBackground)
-      })
+      // 使用动态导入并处理可能的模块问题
+      const loadBackgroundRemoval = async () => {
+        try {
+          const module = await import('@imgly/background-removal')
+          setRemoveBackgroundFn(() => module.removeBackground)
+        } catch (error) {
+          console.error('Failed to load background removal module:', error)
+          // 如果加载失败，切换到 API 模式
+          setMode('api')
+        }
+      }
+      loadBackgroundRemoval()
     }
   }, [mode, removeBackgroundFn])
 
