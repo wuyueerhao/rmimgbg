@@ -47,9 +47,9 @@ npm run dev
 2. 进入 **Workers & Pages** → **Create application** → **Pages**
 3. 连接 GitHub 并选择仓库 `wuyueerhao/rmimgbg`
 4. 构建设置：
-   - **框架预设**：Next.js
+   - **框架预设**：无（选择"无"）
    - **构建命令**：`npm run build`
-   - **构建输出目录**：`.next`
+   - **构建输出目录**：`out`
    - **Node 版本**：18 或更高
 5. **环境变量**（重要！）：
    - 变量名：`REMOVEBG_API_KEY`
