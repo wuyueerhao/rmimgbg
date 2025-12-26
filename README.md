@@ -42,12 +42,9 @@ npm run dev
 ### 1. 推送到 GitHub
 
 ```bash
-git init
 git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/你的用户名/你的仓库名.git
-git push -u origin main
+git commit -m "Update: Use client-side AI model"
+git push
 ```
 
 ### 2. 在 Cloudflare Pages 部署
@@ -59,13 +56,9 @@ git push -u origin main
    - 框架预设：`Next.js`
    - 构建命令：`npm run build`
    - 构建输出目录：`.next`
-5. 环境变量：
-   - 添加 `REMOVEBG_API_KEY` = 你的 API Key
-6. 点击 "Save and Deploy"
+5. 点击 "Save and Deploy"
 
-### 3. 配置 @cloudflare/next-on-pages
-
-项目已配置好 Cloudflare Pages 适配器，会自动使用 Edge Runtime。
+无需配置任何环境变量！
 
 ## 技术栈
 
@@ -73,15 +66,20 @@ git push -u origin main
 - React 18
 - TypeScript
 - Tailwind CSS
-- remove.bg API
+- @imgly/background-removal (ONNX Runtime + WebAssembly)
+
+## 工作原理
+
+使用 [@imgly/background-removal](https://github.com/imgly/background-removal-js) 库，它：
+- 在浏览器中运行预训练的 AI 模型
+- 使用 ONNX Runtime Web 和 WebAssembly
+- 首次加载会下载约 40MB 的模型文件（会被缓存）
+- 完全客户端处理，保护用户隐私
 
 ## 项目结构
 
 ```
 ├── app/
-│   ├── api/
-│   │   └── remove-bg/
-│   │       └── route.ts      # API 路由（保护 API Key）
 │   ├── page.tsx               # 主页面
 │   └── layout.tsx             # 布局
 ├── components/
