@@ -39,33 +39,32 @@ npm run dev
 
 ## 部署到 Cloudflare Pages
 
-### 方法 1：通过 Cloudflare Dashboard（推荐）
+### 1. 推送代码到 GitHub（已完成）
+
+### 2. 在 Cloudflare Pages 部署
 
 1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
 2. 进入 **Workers & Pages** → **Create application** → **Pages**
 3. 连接 GitHub 并选择仓库 `wuyueerhao/rmimgbg`
 4. 构建设置：
-   - **框架预设**：Next.js (Static HTML Export)
+   - **框架预设**：Next.js
    - **构建命令**：`npm run build`
-   - **构建输出目录**：`out`
-5. **环境变量**：
-   - 添加 `REMOVEBG_API_KEY` = 你的 API Key
+   - **构建输出目录**：`.next`
+   - **Node 版本**：18 或更高
+5. **环境变量**（重要！）：
+   - 变量名：`REMOVEBG_API_KEY`
+   - 值：你的 remove.bg API Key
 6. 点击 "Save and Deploy"
 
-### 方法 2：使用 Vercel（更简单）
+### 3. 获取 API Key
 
-如果 Cloudflare Pages 有问题，可以使用 Vercel：
+访问 [remove.bg](https://www.remove.bg/api) 注册并获取免费 API Key（每月 50 次）
 
-1. 访问 [vercel.com](https://vercel.com)
-2. 导入 GitHub 仓库
-3. 添加环境变量 `REMOVEBG_API_KEY`
-4. 部署
+### 重要说明
 
-### 注意事项
-
-- 确保在部署平台添加了 `REMOVEBG_API_KEY` 环境变量
-- API Key 从 [remove.bg](https://www.remove.bg/api) 获取
-- 免费账号每月有 50 次处理限制
+- 本项目使用 Cloudflare Pages Functions 来处理 API 请求
+- API Key 安全存储在 Cloudflare 环境变量中
+- `functions/` 目录下的文件会自动部署为 Cloudflare Workers
 
 ## 技术栈
 
@@ -79,15 +78,22 @@ npm run dev
 
 ```
 ├── app/
-│   ├── api/
-│   │   └── remove-bg/
-│   │       └── route.ts      # API 路由（保护 API Key）
 │   ├── page.tsx               # 主页面
 │   └── layout.tsx             # 布局
 ├── components/
 │   └── BackgroundRemover.tsx  # 主组件
+├── functions/
+│   └── api/
+│       └── remove-bg.ts       # Cloudflare Pages Function (API 代理)
 └── public/                    # 静态资源
 ```
+
+## 工作原理
+
+- 前端使用 Next.js + React + Tailwind CSS
+- API 请求通过 Cloudflare Pages Functions 代理到 remove.bg
+- API Key 安全存储在 Cloudflare 环境变量中
+- 完全 serverless 架构，无需维护服务器
 
 ## 许可证
 
