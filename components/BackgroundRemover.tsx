@@ -11,83 +11,21 @@ interface ImagePair {
   error?: string
 }
 
-type ProcessMode = 'api' | 'local'
-
-export default function BackgroundRemover() {
+function BackgroundRemover() {
   const [images, setImages] = useState<ImagePair[]>([])
   const [dragActive, setDragActive] = useState(false)
-  const [mode, setMode] = useState<ProcessMode>('api')
   const [apiKey, setApiKey] = useState('')
   const [showSettings, setShowSettings] = useState(false)
-  const [removeBackgroundFn, setRemoveBackgroundFn] = useState<any>(null)
-  const [modelLoading, setModelLoading] = useState(false)
-  const [debugMode, setDebugMode] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // 动态加载 @imgly/background-removal
-  useEffect(() => {
-    if (mode === 'local' && !removeBackgroundFn) {
-      // 使用动态导入并处理可能的模块问题
-      const loadBackgroundRemoval = async () => {
-        setModelLoading(true)
-        try {
-          // 确保在客户端环境中加载
-          if (typeof window !== 'undefined') {
-            console.log('开始加载浏览器 AI 模型...')
-            
-            // 添加超时机制
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('模块加载超时')), 30000) // 30秒超时
-            })
-            
-            const loadPromise = import('@imgly/background-removal')
-            
-            const module = await Promise.race([loadPromise, timeoutPromise]) as any
-            
-            if (module && module.removeBackground) {
-              console.log('浏览器 AI 模型加载成功')
-              setRemoveBackgroundFn(() => module.removeBackground)
-            } else {
-              throw new Error('模块加载不完整')
-            }
-          }
-        } catch (error) {
-          console.error('Failed to load background removal module:', error)
-          
-          // 根据错误类型提供不同的提示
-          let errorMsg = '浏览器 AI 模式加载失败'
-          if (error instanceof Error) {
-            if (error.message.includes('timeout') || error.message.includes('超时')) {
-              errorMsg = '模型加载超时，请检查网络连接'
-            } else if (error.message.includes('replace')) {
-              errorMsg = '模块兼容性问题，请尝试刷新页面'
-            }
-          }
-          
-          // 如果加载失败，切换到 API 模式
-          setMode('api')
-          alert(`${errorMsg}，已自动切换到 API 模式`)
-        } finally {
-          setModelLoading(false)
-        }
-      }
-      loadBackgroundRemoval()
-    } else if (mode === 'api') {
-      setModelLoading(false)
-    }
-  }, [mode, removeBackgroundFn])
 
   // 从 localStorage 加载设置
   useEffect(() => {
-    const savedMode = localStorage.getItem('processMode') as ProcessMode
     const savedApiKey = localStorage.getItem('removeBgApiKey')
-    if (savedMode) setMode(savedMode)
     if (savedApiKey) setApiKey(savedApiKey)
   }, [])
 
   // 保存设置到 localStorage
   const saveSettings = () => {
-    localStorage.setItem('processMode', mode)
     if (apiKey) {
       localStorage.setItem('removeBgApiKey', apiKey)
     }
@@ -137,13 +75,7 @@ export default function BackgroundRemover() {
     ))
 
     try {
-      if (mode === 'local') {
-        // 使用浏览器端 AI 模型
-        await processWithLocalAI(id, file)
-      } else {
-        // 使用 remove.bg API
-        await processWithAPI(id, file)
-      }
+      await processWithAPI(id, file)
     } catch (error) {
       console.error('Error:', error)
       setImages(prev => prev.map(img =>
@@ -185,65 +117,6 @@ export default function BackgroundRemover() {
         ? { ...img, processed: imageUrl, status: 'completed' as const }
         : img
     ))
-  }
-
-  const processWithLocalAI = async (id: string, file: File) => {
-    if (!removeBackgroundFn) {
-      throw new Error('AI 模型加载中，请稍后重试')
-    }
-
-    try {
-      // 验证文件类型和大小
-      if (!file.type.startsWith('image/')) {
-        throw new Error('请上传有效的图片文件')
-      }
-      
-      if (file.size > 10 * 1024 * 1024) { // 10MB 限制
-        throw new Error('图片文件过大，请选择小于 10MB 的图片')
-      }
-
-      console.log('开始处理图片:', file.name, '大小:', Math.round(file.size / 1024), 'KB')
-      
-      // 确保传递正确的参数类型
-      const blob = await removeBackgroundFn(file, {
-        progress: (key: string, current: number, total: number) => {
-          const percentage = Math.round((current / total) * 100)
-          console.log(`处理进度: ${percentage}%`)
-        },
-      })
-
-      if (!blob || !(blob instanceof Blob)) {
-        throw new Error('AI 处理返回了无效的结果')
-      }
-
-      const imageUrl = URL.createObjectURL(blob)
-      console.log('图片处理完成:', file.name)
-
-      setImages(prev => prev.map(img =>
-        img.id === id
-          ? { ...img, processed: imageUrl, status: 'completed' as const }
-          : img
-      ))
-    } catch (error) {
-      console.error('Local AI processing error:', error)
-      
-      // 提供更详细的错误信息
-      let errorMessage = '浏览器 AI 处理失败'
-      
-      if (error instanceof Error) {
-        if (error.message.includes('replace')) {
-          errorMessage = '模块加载错误，请刷新页面重试'
-        } else if (error.message.includes('memory') || error.message.includes('Memory')) {
-          errorMessage = '内存不足，请尝试处理更小的图片'
-        } else if (error.message.includes('network') || error.message.includes('fetch')) {
-          errorMessage = '网络错误，请检查网络连接'
-        } else {
-          errorMessage = `处理失败: ${error.message}`
-        }
-      }
-      
-      throw new Error(errorMessage)
-    }
   }
 
   const handleDrag = (e: DragEvent<HTMLDivElement>) => {
@@ -320,106 +193,47 @@ export default function BackgroundRemover() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         </button>
-        <button
-          onClick={() => setDebugMode(!debugMode)}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-all"
-          title="调试模式"
-        >
-          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-        </button>
       </div>
 
       <p className="text-center text-gray-600 mb-6">
-        上传单张或多张图片，自动移除背景
+        上传单张或多张图片，使用 remove.bg API 自动移除背景
       </p>
-
-      {/* 调试信息 */}
-      {debugMode && (
-        <div className="mb-6 p-4 bg-gray-100 rounded-lg text-sm">
-          <h4 className="font-semibold mb-2">🔧 调试信息</h4>
-          <div className="space-y-1 text-gray-700">
-            <div>浏览器: {navigator.userAgent}</div>
-            <div>模式: {mode}</div>
-            <div>模型加载状态: {modelLoading ? '加载中' : '未加载'}</div>
-            <div>模型函数: {removeBackgroundFn ? '已加载' : '未加载'}</div>
-            <div>支持 WebAssembly: {typeof WebAssembly !== 'undefined' ? '是' : '否'}</div>
-            <div>支持 Worker: {typeof Worker !== 'undefined' ? '是' : '否'}</div>
-            <div>内存信息: {(performance as any).memory ? 
-              `已用: ${Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024)}MB / 限制: ${Math.round((performance as any).memory.jsHeapSizeLimit / 1024 / 1024)}MB` 
-              : '不可用'}</div>
-          </div>
-          {mode === 'local' && (
-            <button
-              onClick={() => {
-                setRemoveBackgroundFn(null)
-                setModelLoading(false)
-              }}
-              className="mt-2 px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600"
-            >
-              重置模型
-            </button>
-          )}
-        </div>
-      )}
 
       {/* 设置面板 */}
       {showSettings && (
         <div className="mb-6 p-6 bg-gray-50 rounded-xl border-2 border-gray-200">
-          <h3 className="text-lg font-semibold mb-4">处理模式设置</h3>
+          <h3 className="text-lg font-semibold mb-4">API 设置</h3>
           
-          {/* 模式选择 */}
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <input
-                type="radio"
-                id="mode-api"
-                checked={mode === 'api'}
-                onChange={() => setMode('api')}
-                className="mt-1"
-              />
-              <label htmlFor="mode-api" className="flex-1 cursor-pointer">
+              <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center mt-1">
+                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
                 <div className="font-medium text-gray-800">remove.bg API 模式</div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 mb-3">
                   使用 remove.bg 云端 API，处理速度快，质量高
                   {!apiKey && <span className="text-orange-600">（使用服务器默认 API Key，每月 50 次限制）</span>}
                 </div>
-              </label>
-            </div>
-
-            {mode === 'api' && (
-              <div className="ml-6 space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  自定义 API Key（可选）
-                </label>
-                <input
-                  type="text"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="输入你的 remove.bg API Key"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-                <p className="text-xs text-gray-500">
-                  从 <a href="https://www.remove.bg/api" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">remove.bg</a> 获取免费 API Key（每月 50 次）
-                </p>
-              </div>
-            )}
-
-            <div className="flex items-start gap-3">
-              <input
-                type="radio"
-                id="mode-local"
-                checked={mode === 'local'}
-                onChange={() => setMode('local')}
-                className="mt-1"
-              />
-              <label htmlFor="mode-local" className="flex-1 cursor-pointer">
-                <div className="font-medium text-gray-800">浏览器端 AI 模式</div>
-                <div className="text-sm text-gray-600">
-                  完全免费，无限次数，隐私安全，但首次加载需下载 ~40MB 模型
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    自定义 API Key（可选）
+                  </label>
+                  <input
+                    type="text"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="输入你的 remove.bg API Key"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500">
+                    从 <a href="https://www.remove.bg/api" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">remove.bg</a> 获取免费 API Key（每月 50 次）
+                  </p>
                 </div>
-              </label>
+              </div>
             </div>
           </div>
 
@@ -443,26 +257,9 @@ export default function BackgroundRemover() {
       {/* 当前模式指示 */}
       <div className="mb-6 flex items-center justify-center gap-2 text-sm">
         <span className="text-gray-600">当前模式:</span>
-        <span className={`px-3 py-1 rounded-full font-medium ${
-          mode === 'api' 
-            ? 'bg-blue-100 text-blue-700' 
-            : 'bg-green-100 text-green-700'
-        }`}>
-          {mode === 'api' ? '🌐 API 模式' : '🤖 浏览器 AI 模式'}
+        <span className="px-3 py-1 rounded-full font-medium bg-blue-100 text-blue-700">
+          🌐 remove.bg API 模式
         </span>
-        {mode === 'local' && modelLoading && (
-          <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full font-medium">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 border-2 border-yellow-600 border-t-transparent rounded-full animate-spin"></div>
-              模型加载中...
-            </div>
-          </span>
-        )}
-        {mode === 'local' && !modelLoading && removeBackgroundFn && (
-          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full font-medium">
-            ✅ 模型已就绪
-          </span>
-        )}
       </div>
 
       {images.length === 0 && (
@@ -644,3 +441,5 @@ export default function BackgroundRemover() {
     </div>
   )
 }
+
+export default BackgroundRemover

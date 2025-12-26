@@ -1,4 +1,4 @@
-import BackgroundRemover from '@/components/BackgroundRemover'
+import BackgroundRemover from '../components/BackgroundRemover'
 
 export default function Home() {
   return (
